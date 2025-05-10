@@ -26,3 +26,21 @@ This is a Go program that reads a quiz from a CSV file and presents it to the us
    ```bash
    git clone https://github.com/SUSHANT-0210/Quiz.git
    cd Quiz
+
+## Build the Program:
+
+go build .
+
+## Run the Program:
+
+./quiz_project.exe -csv=<file_path> -limit=<time_limit> -shuffle=<bool>
+
+-csv: Path to the CSV file. Default is problems.csv.
+
+-limit: Time limit for the quiz in seconds. Default is 30 seconds.
+
+-shuffle: Optional flag to shuffle questions.
+
+
+
+
