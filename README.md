@@ -1,46 +1,75 @@
 # Quiz Project
 
-This is a Go program that reads a quiz from a CSV file and presents it to the user. The quiz tracks correct and incorrect answers and supports customizable options like time limits and shuffling questions.
+A command-line quiz application built in Go that reads questions from a CSV file and challenges users to answer them within a time limit.
 
 ## Features
 
-1. **CSV-Based Quiz**:
-   - Reads quiz questions and answers from a CSV file.
-   - Default file: `problems.csv`.
+- **CSV-Based Quiz**: Reads questions and answers from a customizable CSV file
+- **Time Limit**: Configurable countdown timer adds an element of challenge
+- **Question Shuffling**: Optional randomization of question order
+- **Simple Interface**: Clean command-line interface with clear feedback
+- **Score Tracking**: Tracks and displays final performance statistics
 
-2. **Customizable Options**:
-   - Set a custom CSV file with the `-csv` flag.
-   - Add a time limit for the quiz with the `-limit` flag.
+## Installation
 
-3. **Real-Time Feedback**:
-   - Tracks the number of correct and incorrect answers during the quiz.
-   - Displays results at the end.
-
-4. **Bonus Features**:
-   - Answers are trimmed and case-insensitive to handle formatting variations.
-   - Supports shuffling questions with the `-shuffle` flag.
-
-## How to Use
-
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/SUSHANT-0210/Quiz.git
-   cd Quiz
-
-## Build the Program:
 ```bash
-go build .
+# Clone the repository
+git clone https://github.com/SUSHANT-0210/Quiz.git
+cd Quiz
+
+# Build the program
+go build -o quiz
 ```
-## Run the Program:
+
+## Usage
+
 ```bash
-./quiz_project.exe -csv=<file_path> -limit=<time_limit> -shuffle=<bool_value>
+./quiz -csv=filename.csv -limit=seconds -shuffle=true|false
 ```
--csv: Path to the CSV file. Default is problems.csv.
 
--limit: Time limit for the quiz in seconds. Default is 30 seconds.
+### Command Line Flags
 
--shuffle: Optional flag to shuffle questions.
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-csv` | Path to the CSV file containing questions | `problems.csv` |
+| `-limit` | Time limit for the quiz in seconds | `30` |
+| `-shuffle` | Whether to randomize question order | `false` |
 
+### CSV File Format
 
+The CSV file should follow this format:
+```
+question1,answer1
+question2,answer2
+...
+```
 
+Example:
+```
+5+5,10
+capital of france,paris
+7*8,56
+```
 
+## Example
+
+```bash
+# Run with default settings
+./quiz
+
+# Run with custom settings
+./quiz -csv=math_problems.csv -limit=60 -shuffle=true
+```
+
+## Development
+
+Requirements:
+- Go 1.16 or higher
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
