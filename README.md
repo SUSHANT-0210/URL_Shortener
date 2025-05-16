@@ -1,67 +1,112 @@
-# Quiz Project
+# URL Shortener Service
 
-A command-line quiz application built in Go that reads questions from a CSV file and challenges users to answer them within a time limit.
+A simple, fast URL shortener service written in Go that generates shortened URLs and provides redirect functionality.
 
 ## Features
 
-- **CSV-Based Quiz**: Reads questions and answers from a customizable CSV file
-- **Time Limit**: Configurable countdown timer adds an element of challenge
-- **Question Shuffling**: Optional randomization of question order
-- **Simple Interface**: Clean command-line interface with clear feedback
-- **Score Tracking**: Tracks and displays final performance statistics
+- Generate shortened URLs from long URLs
+- Redirect from shortened URLs to original URLs
+- Persistent storage using SQLite database
+- RESTful API for URL shortening
+- SHA-256 based URL shortening algorithm
+
+## Requirements
+
+- Go 1.14 or higher
+- SQLite3
 
 ## Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/SUSHANT-0210/Quiz.git
-cd Quiz
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/SUSHANT-0210/URL_Shortener.git
+   ```
 
-# Build the program
-go build -o quiz
-```
+2. Install dependencies:
+   ```bash
+   go get github.com/mattn/go-sqlite3
+   ```
+
+3. Build the application:
+   ```bash
+   go build -o url-shortener
+   ```
 
 ## Usage
 
+### Starting the Server
+
+Run the compiled binary:
+
 ```bash
-./quiz -csv=filename.csv -limit=seconds -shuffle=true|false
+./url-shortener
 ```
 
-### Command Line Flags
+The server will start on port 8080.
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `-csv` | Path to the CSV file containing questions | `problems.csv` |
-| `-limit` | Time limit for the quiz in seconds | `30` |
-| `-shuffle` | Whether to randomize question order | `false` |
+### API Endpoints
 
-### CSV File Format
+#### Shorten URL
 
-The CSV file should follow this format:
 ```
-question1,answer1
-question2,answer2
-...
+POST /shorten
+```
+
+Request body:
+```json
+{
+  "url": "https://example.com/very/long/url/that/needs/shortening"
+}
+```
+
+Response:
+```json
+{
+  "short_url": "a1b2c3d4"
+}
+```
+
+#### Redirect to Original URL
+
+```
+POST /redirect/{shortURL}
 ```
 
 Example:
 ```
-5+5,10
-capital of france,paris
-7*8,56
+POST /redirect/a1b2c3d4
 ```
 
-## Example
+This will redirect to the original URL associated with the shortened URL.
 
-```bash
-# Run with default settings
-./quiz
+## How It Works
 
-# Run with custom settings
-./quiz -csv=math_problems.csv -limit=60 -shuffle=true
-```
+1. The service generates a short URL by:
+   - Taking the SHA-256 hash of the original URL
+   - Using the first 8 characters of the hash as the short URL ID
 
-## Development
+2. URLs are stored in an SQLite database with the following schema:
+   ```sql
+   CREATE TABLE urls (
+       id TEXT PRIMARY KEY,
+       original_url TEXT,
+       short_url TEXT,
+       created_at DATETIME
+   )
+   ```
 
-Requirements:
-- Go 1.16 or higher
+3. When a user accesses a shortened URL, the service looks up the original URL in the database and redirects the user.
+
+## Error Handling
+
+- If an invalid URL is provided, an appropriate error message is returned.
+- If a shortened URL is not found in the database, a 404 error is returned.
+- If there are database errors, a 500 error is returned.
+
+## Security Considerations
+
+- This service does not implement any authentication or rate limiting.
+- For production use, consider adding:
+  - Rate limiting to prevent abuse
+  - Authentication for URL creation
+  - HTTPS support for secure data transmission
