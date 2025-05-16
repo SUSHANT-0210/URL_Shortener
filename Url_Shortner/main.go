@@ -2,11 +2,14 @@ package main
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
 
 // Structure to hold in db
@@ -27,7 +30,28 @@ type URL struct {
 		}
 */
 
-var urlDb = make(map[string]URL)
+var db *sql.DB
+
+func initializeDB() error {
+	var err error
+	db, err = sql.Open("sqlite3", "./url_shortner.db")
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+
+	query := `
+    CREATE TABLE IF NOT EXISTS urls (
+        id TEXT PRIMARY KEY,
+        original_url TEXT,
+        short_url TEXT,
+        created_at DATETIME
+    )`
+	_, err = db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to create table: %w", err)
+	}
+	return nil
+}
 
 func generateShortURL(original_url string) string {
 	hasher := sha256.New()
@@ -37,21 +61,55 @@ func generateShortURL(original_url string) string {
 	return hash[:8]
 }
 
-func storeInfoInDB(originalURL string) {
+func storeInfoInDB(originalURL string) error {
 	shortURL := generateShortURL(originalURL)
 	id := shortURL
-	urlDb[id] = URL{
-		Id:          id,
-		OriginalURL: originalURL,
-		ShortURL:    shortURL,
-		CreatedAt:   time.Now(),
+
+	// Check if the URL already exists
+	queryCheck := `SELECT id FROM urls WHERE original_url = ?`
+	var existingID string
+	err := db.QueryRow(queryCheck, originalURL).Scan(&existingID)
+	if err == nil {
+		// URL already exists
+		fmt.Printf("URL already exists with ID: %s\n", existingID)
+		return nil
+	} else if err != sql.ErrNoRows {
+		// An actual error occurred
+		fmt.Printf("Error checking for existing URL: %v\n", err)
+		return err
 	}
+
+	// URL does not exist, insert it into the database
+	fmt.Printf("Storing URL: %s\n", originalURL)
+	fmt.Printf("Short URL: %s\n", shortURL)
+
+	queryInsert := `INSERT INTO urls (id, original_url, short_url, created_at) VALUES (?, ?, ?, ?)`
+	_, err = db.Exec(queryInsert, id, originalURL, shortURL, time.Now())
+	if err != nil {
+		fmt.Printf("Error inserting URL: %v\n", err)
+		return err
+	}
+
+	fmt.Println("URL stored successfully.")
+	return nil
 }
 
 func getURLStructure(id string) (URL, error) {
-	url, exists := urlDb[id]
-	if !exists {
-		return URL{}, errors.New("URL not found")
+	query := `
+	SELECT id, original_url, short_url, created_at
+	FROM urls
+	WHERE id = ?
+	`
+	row := db.QueryRow(query, id)
+
+	var url URL
+	err := row.Scan(&url.Id, &url.OriginalURL, &url.ShortURL, &url.CreatedAt)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return URL{}, errors.New("URL not found")
+		}
+		return URL{}, err
 	}
 	return url, nil
 }
@@ -65,12 +123,19 @@ func shortURLHandler(w http.ResponseWriter, r *http.Request) {
 		URL string `json:"url"`
 	}
 
+	fmt.Printf("Request received: %s\n", r.URL.Path)
+
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-	storeInfoInDB(data.URL)
+	err__ := storeInfoInDB(data.URL)
+
+	if err__ != nil {
+		http.Error(w, "Error storing URL in database", http.StatusInternalServerError)
+	}
+
 	shortURL_ := generateShortURL(data.URL)
 	response := struct {
 		ShortURL string `json:"short_url"`
@@ -95,14 +160,24 @@ func redirectURLHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// Initialize the database
+	fmt.Println("Starting program...")
+
+	err := initializeDB()
+	if err != nil {
+		fmt.Println("Error initializing database:", err)
+		return
+	}
+
+	defer db.Close()
 
 	http.HandleFunc("/shorten", shortURLHandler)
 	http.HandleFunc("/redirect/", redirectURLHandler)
 	http.HandleFunc("/", RootPageHandler)
 	// Start HTTP server on port 8080
 	fmt.Println("Starting server on port 8080...")
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
+	err_ := http.ListenAndServe(":8080", nil)
+	if err_ != nil {
 		fmt.Println("Error starting server:", err)
 		return
 	}
