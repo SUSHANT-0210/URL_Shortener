@@ -10,6 +10,7 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
+	"golang.org/x/time/rate"
 )
 
 // Structure to hold in db
@@ -31,6 +32,7 @@ type URL struct {
 */
 
 var db *sql.DB
+var limiter = rate.NewLimiter(1, 5)
 
 func initializeDB() error {
 	var err error
@@ -114,6 +116,17 @@ func getURLStructure(id string) (URL, error) {
 	return url, nil
 }
 
+func rateLimiterMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !limiter.Allow() {
+			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+			fmt.Println("Rate limit exceeded for client")
+			return
+		}
+		next(w, r)
+	}
+}
+
 func RootPageHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Invalid URL!\n")
 }
@@ -171,8 +184,8 @@ func main() {
 
 	defer db.Close()
 
-	http.HandleFunc("/shorten", shortURLHandler)
-	http.HandleFunc("/redirect/", redirectURLHandler)
+	http.HandleFunc("/shorten", rateLimiterMiddleware(shortURLHandler))
+	http.HandleFunc("/redirect/", rateLimiterMiddleware(redirectURLHandler))
 	http.HandleFunc("/", RootPageHandler)
 	// Start HTTP server on port 8080
 	fmt.Println("Starting server on port 8080...")
